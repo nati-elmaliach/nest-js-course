@@ -1,5 +1,5 @@
 /* CoffeesService - FINAL CODE */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaginationQueryDto } from 'src/common/dto.pagination-query.dto';
 import { Event } from '../events/entities/event.entity';
@@ -8,6 +8,7 @@ import { CreateCoffeeDto } from './dto/create-coffee.dto';
 import { UpdateCoffeeDto } from './dto/update-coffee.dto';
 import { Coffee } from './entities/coffee.entity';
 import { Flavor } from './entities/flavor.entity';
+import { COFFE_BRANDS } from './coffees.constants';
 
 @Injectable()
 export class CoffeesService {
@@ -16,25 +17,26 @@ export class CoffeesService {
     private readonly coffeeRepository: Repository<Coffee>,
     @InjectRepository(Flavor)
     private readonly flavorRepository: Repository<Flavor>,
-    private readonly connection: Connection
+    private readonly connection: Connection,
+    @Inject(COFFE_BRANDS) coffeeBrands: string[]
   ) { }
 
   async recommendCoffee(coffee: Coffee) {
     const queryRunner = this.connection.createQueryRunner();
-    
+
     await queryRunner.connect();
-    await queryRunner.startTransaction(); 
+    await queryRunner.startTransaction();
     try {
       coffee.recommendations++;
-      
+
       const recommendEvent = new Event();
       recommendEvent.name = 'recommend_coffee';
       recommendEvent.type = 'coffee';
       recommendEvent.payload = { coffeeId: coffee.id };
-    
-      await queryRunner.manager.save(coffee); 
+
+      await queryRunner.manager.save(coffee);
       await queryRunner.manager.save(recommendEvent);
-      
+
       await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -42,7 +44,7 @@ export class CoffeesService {
       await queryRunner.release();
     }
   }
-  
+
 
   findAll(paginationQuery: PaginationQueryDto) {
     const { limit, offset } = paginationQuery;
